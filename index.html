@@ -1,0 +1,164 @@
+import { useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableHead, TableRow, TableCell, TableBody } from "@/components/ui/table";
+import * as XLSX from "xlsx";
+
+export default function InventoryApp() {
+  const [items, setItems] = useState([]);
+  const [newItem, setNewItem] = useState({ name: "", quantity: "", machine: "", partNumber: "", area: "" });
+  const [filters, setFilters] = useState({ name: "", machine: "", partNumber: "", area: "" });
+
+  useEffect(() => {
+    const stored = localStorage.getItem("refacciones");
+    if (stored) {
+      setItems(JSON.parse(stored));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("refacciones", JSON.stringify(items));
+  }, [items]);
+
+  const addItem = () => {
+    const { name, quantity, machine, partNumber, area } = newItem;
+    if (name && quantity && machine && partNumber && area) {
+      setItems([...items, { ...newItem, quantity: parseInt(quantity), id: Date.now() }]);
+      setNewItem({ name: "", quantity: "", machine: "", partNumber: "", area: "" });
+    }
+  };
+
+  const removeItem = (id) => {
+    setItems(items.filter(item => item.id !== id));
+  };
+
+  const usePart = (id) => {
+    setItems(items.map(item => {
+      if (item.id === id) {
+        const newQty = item.quantity - 1;
+        return { ...item, quantity: newQty >= 0 ? newQty : 0 };
+      }
+      return item;
+    }));
+  
+
+  
+  
+};
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(items);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
+    XLSX.writeFile(workbook, "inventario.xlsx");
+  };
+
+  const filteredItems = items.filter(item => {
+    return (
+      item.name.toLowerCase().includes(filters.name.toLowerCase()) &&
+      item.machine.toLowerCase().includes(filters.machine.toLowerCase()) &&
+      item.partNumber.toLowerCase().includes(filters.partNumber.toLowerCase()) &&
+      item.area.toLowerCase().includes(filters.area.toLowerCase())
+    );
+  });
+
+  return (
+    <div className="p-6">
+      <Card>
+        <CardContent>
+          <h2 className="text-xl font-bold mb-4">Control de Refacciones</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-4">
+            <Input
+              placeholder="Nombre de la refacción"
+              value={newItem.name}
+              onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+            />
+            <Input
+              placeholder="Cantidad"
+              type="number"
+              value={newItem.quantity}
+              onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })}
+            />
+            <Input
+              placeholder="Tipo de máquina"
+              value={newItem.machine}
+              onChange={(e) => setNewItem({ ...newItem, machine: e.target.value })}
+            />
+            <Input
+              placeholder="Número de parte"
+              value={newItem.partNumber}
+              onChange={(e) => setNewItem({ ...newItem, partNumber: e.target.value })}
+            />
+            <Input
+              placeholder="Área"
+              value={newItem.area}
+              onChange={(e) => setNewItem({ ...newItem, area: e.target.value })}
+            />
+            <Button onClick={addItem}>Agregar</Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-4">
+            <Input
+              placeholder="Filtrar por refacción"
+              value={filters.name}
+              onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+            />
+            <Input
+              placeholder="Filtrar por máquina"
+              value={filters.machine}
+              onChange={(e) => setFilters({ ...filters, machine: e.target.value })}
+            />
+            <Input
+              placeholder="Filtrar por número de parte"
+              value={filters.partNumber}
+              onChange={(e) => setFilters({ ...filters, partNumber: e.target.value })}
+            />
+            <Input
+              placeholder="Filtrar por área"
+              value={filters.area}
+              onChange={(e) => setFilters({ ...filters, area: e.target.value })}
+            />
+          </div>
+
+          <div className="flex gap-4 mb-4">
+            <Button onClick={exportToExcel}>Exportar a Excel</Button>
+            
+          </div>
+
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Refacción</TableCell>
+                <TableCell>Máquina</TableCell>
+                <TableCell>Núm. de Parte</TableCell>
+                <TableCell>Área</TableCell>
+                <TableCell>Cantidad</TableCell>
+                <TableCell>Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredItems.map((item) => (
+                <TableRow key={item.id} className={item.quantity === 0 ? "bg-red-100" : ""}>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>{item.machine}</TableCell>
+                  <TableCell>{item.partNumber}</TableCell>
+                  <TableCell>{item.area}</TableCell>
+                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell className="flex gap-2">
+                    <Button onClick={() => usePart(item.id)} disabled={item.quantity === 0}>
+                      Usar 1
+                    </Button>
+                    <Button variant="destructive" onClick={() => removeItem(item.id)}>
+                      Eliminar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
